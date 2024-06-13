@@ -7,7 +7,8 @@
 
 use dioxus::prelude::*;
 
-fn main() {
+#[tokio::main]
+async fn main() {
     launch(app);
 }
 

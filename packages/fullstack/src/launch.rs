@@ -6,6 +6,15 @@ use dioxus_lib::prelude::{Element, VirtualDom};
 
 pub use crate::Config;
 
+#[cfg(all(feature = "server", not(target_arch = "wasm32")))]
+fn lazy_tokio_runtime() -> tokio::runtime::Handle {
+    if let Ok(current) = tokio::runtime::Handle::try_current() {
+        return current;
+    }
+
+    tokio::runtime::Runtime::new().unwrap().handle().clone()
+}
+
 /// Launch a fullstack app with the given root component, contexts, and config.
 #[allow(unused)]
 pub fn launch(
@@ -22,11 +31,9 @@ pub fn launch(
     };
 
     #[cfg(all(feature = "server", not(target_arch = "wasm32")))]
-    tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(async move {
-            platform_config.launch_server(virtual_dom_factory).await;
-        });
+    lazy_tokio_runtime().block_on(async move {
+        platform_config.launch_server(virtual_dom_factory).await;
+    });
 
     #[cfg(not(feature = "server"))]
     {

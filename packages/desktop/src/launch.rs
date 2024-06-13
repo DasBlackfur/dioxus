@@ -65,16 +65,26 @@ pub fn launch_virtual_dom_blocking(virtual_dom: VirtualDom, desktop_config: Conf
     })
 }
 
-/// Launches the WebView and runs the event loop, with configuration and root props.
-pub fn launch_virtual_dom(virtual_dom: VirtualDom, desktop_config: Config) -> ! {
-    #[cfg(feature = "tokio")]
+#[cfg(feature = "tokio")]
+fn lazy_tokio_runtime() -> tokio::runtime::Handle {
+    if let Ok(current) = tokio::runtime::Handle::try_current() {
+        return current;
+    }
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
-        .block_on(tokio::task::unconstrained(async move {
-            launch_virtual_dom_blocking(virtual_dom, desktop_config)
-        }));
+        .handle()
+        .clone()
+}
+
+/// Launches the WebView and runs the event loop, with configuration and root props.
+pub fn launch_virtual_dom(virtual_dom: VirtualDom, desktop_config: Config) -> ! {
+    #[cfg(feature = "tokio")]
+    lazy_tokio_runtime().block_on(tokio::task::unconstrained(async move {
+        launch_virtual_dom_blocking(virtual_dom, desktop_config)
+    }));
 
     #[cfg(not(feature = "tokio"))]
     launch_virtual_dom_blocking(virtual_dom, desktop_config);
